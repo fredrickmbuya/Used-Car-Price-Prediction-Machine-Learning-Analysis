@@ -1,0 +1,227 @@
+---
+title: "Data Preparation and Cleaning"
+author: "Fredrick George  Mbuya(2056118)"
+date: "2023-03-01"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+# Libraries used
+```{r}
+library(plyr)
+library(validate)
+library(dlookr)
+library(dplR)
+library(pacman)
+```
+
+# Loading data into R
+```{r}
+used_car <- read.csv("true_car_listings.csv", na.strings = c("NA",""))
+```
+
+## Valiadation Rules
+
+1. The car's price (Price), and  the year it was purchased (Year) should all be non-negative and numerical.  
+2. The number of kilometers driven by the car (Mileage) should be greater than zero and numerical.  
+2. The city and state where the car was sold should all be Character.  
+3. A car's unique number (Vin), manufacturer (Make), and model (name) should all be characters.  
+4. Examine for the presence of missing values.  
+5. Examine for the presence of duplicated records.  
+6. The length of the year in which the car was purchased (Year) should be equal to four.  
+7. The length of each state should be equal to two.  
+8. The length of the city, vin, and Make should be greater than or equal to two.  
+9. The latest year in which the car was purchased (Year) should be 2023. No Minimum year just because america there is no that regulation  
+
+# Developing validator function
+```{r}
+#Allow variables to be accessed without having to type the data frame's name.
+attach(used_car)
+
+#Creating Validator
+used_car_rules <- validator(Non_negPrice = Price>=0,
+                            Non_negYear = Year>=0,
+                            Non_negMiliage = Mileage>0,
+                            YearLength = field_length(Year, n=4),
+                            StateLength = field_length(State, n=2),
+                            CityLength = nchar(City)>=2,
+                            VinLength = nchar(Vin)>=2,
+                            MakeLength = nchar(Make)>=2,
+                            MaxYear = Year<=2023,
+                            DataUnique = is_unique(used_car),
+                            MissingValue = !is.na(used_car),
+                            StringVin = is.character(Vin),
+                            StringMake = is.character(Make),
+                            StringModel = is.character(Model),
+                            NumberPrice = is.numeric(Price),
+                            NumberYear = is.numeric(Year),
+                            NumberMleage = is.numeric(Mileage))
+
+
+# Apply the rules to the data and save the results in a variable called out.
+out <- confront(used_car, used_car_rules)
+
+# The easiest way to check the results is with summary()
+summary(out)
+```
+
+The output above shows that,   
+  . The car's price (Price) and year of purchase (Year) are all non-negative and numerical values.  
+  . The number of kilometres driven (Mileage) by the car is greater than zero, proving that all sold cars are used.  
+  . The city and state where the car was sold, The unique number (Vin), manufacturer (Make), and model (name) of a car are all Characters.  
+  .There are no missing values, 
+  .The Year variable has a length of 4, and all years were less than 2023, the current year,  
+  .The lengths of the City, Vin, and MAKE variables are all greater than or equal to two.
+  .There are 30 duplicate records (60 divided by two).  
+  .State lengths are not all equal to two, implying that there might be space before, after, or between data.  
+
+We can use the violating() to select records that violate one or more rules, but we will use only first ten rules because the remaining rules can not have record-wise interpretation.  
+
+```{r}
+violating(used_car,out[1:10])
+```
+
+# Data Cleaning
+
+## removing any gap that exists before, after, or between
+
+. I will not deal with the State column only for the great benefits of other variables and reducing the size of the data. To remove leading, trailing, and all unnecessary white spaces from the entire data set, use gsub (). This will return a matrix, but we will convert it back to a data frame using as.data.frame ()
+
+NB: *\\s+, which is a regular expression that matches one or more whitespace characters, such as spaces, tabs, and newlines.*
+
+```{r}
+#Creating the function
+space_remover <- function(x){
+  gsub('\\s+', '', x)
+}
+
+#Applying the function to every column 
+used_car <- apply(used_car, 2, space_remover)
+
+#Convert the Matrix output back to data frame
+used_car <- as.data.frame(used_car)
+```
+
+## Omitting unnecessary punctuation.
+
+```{r}
+#Exist between, before, and after a data point for City, State, Vin, and Make Variables.
+used_car$City <- gsub("[[:punct:]]", "", used_car$City)
+used_car$State <- gsub("[[:punct:]]", "", used_car$State)
+used_car$Vin <- gsub("[[:punct:]]", "", used_car$Vin)
+used_car$Make <- gsub("[[:punct:]]", "", used_car$Make)
+
+#On a Model Variable, exist before or after a data point.
+used_car$Model <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", used_car$Model)
+```
+
+## Changing the character variables to factor for Memory efficiency and Consistency
+
+  .Using as.factor()
+
+```{r}
+# Convert the 'City', 'State', 'Vin', 'Make', and 'Model' variables to factor data type.
+used_car$City <- as.factor(used_car$City)
+used_car$State <- as.factor(used_car$State)
+used_car$Vin <- as.factor(used_car$Vin)
+used_car$Make <- as.factor(used_car$Make)
+used_car$Model <- as.factor(used_car$Model)
+
+# Check the structure of the 'used_car' data frame.
+str(used_car)
+```
+
+Looking at the structure of the dataset we also notice that our numerical data is in a character format. This needs to be changed.  
+
+```{r}
+# Convert 'Price', 'Mileage', 'Year' columns to integer data type for better data handling
+used_car$Price <- as.integer(used_car$Price)
+used_car$Mileage <- as.integer(used_car$Mileage)
+used_car$Price <- as.integer(used_car$Price)
+used_car$Year <- as.integer(used_car$Year)
+
+# Check the data structure of 'used_car' dataframe
+str(used_car)
+```
+
+## Changing to lower case
+
+The variables "City," "State," "Make," and "Model" in the dataset are converted to lower case before being converted back to factors. This is done to ensure that the spelling and formatting of these variables are consistent across the whole dataset. Each factor's levels are then examined to ensure that they match the expected values. When working with categorical variables in the dataset, this approach helps to prevent errors and inconsistencies. 
+
+```{r}
+# Convert all values in the City, State, Make, and Model variables to lowercase
+used_car$City <- tolower(used_car$City)
+used_car$State <- tolower(used_car$State)
+used_car$Make <- tolower(used_car$Make)
+used_car$Model <- tolower(used_car$Model)
+
+# Convert the City, State, Make, and Model variable back to factors
+used_car$City <- as.factor(used_car$City)
+used_car$State <- as.factor(used_car$State)
+used_car$Make <- as.factor(used_car$Make)
+used_car$Model <- as.factor(used_car$Model)
+
+# Display the levels of the City, State, Make, and Model variables
+levels(used_car$City)
+levels(used_car$State)
+levels(used_car$Make)
+levels(used_car$Model)
+
+# Display the structure of the 'used_car' data frame
+str(used_car)
+```
+
+## Removing duplicated records
+
+  .To eliminate duplicate records, we use unique().
+  
+```{r}
+used_car <-unique(used_car)
+```
+
+
+# Outliers handling
+
+We can see from the results below that there are outliers in all of the numerical data. We can see the impact on the data by comparing the ones with and without outliers. 
+```{r}
+# See if there are any odd values
+plot_outlier(used_car, Price, Mileage, Year)
+```
+
+Before making any decisions, we must first determine whether these outliers are true incorrect values or contain information. To find out, we must delve deeper into the data. We can see the values for these outliers by using the boxplot.stats() functions.
+
+```{r}
+# Identify nature of outliers in Price, Mileage, and Year variables
+boxplot.stats(used_car$Price)$out 
+boxplot.stats(used_car$Mileage)$out 
+boxplot.stats(used_car$Year)$out
+
+# Summary statistics for Price, Year, and Mileage variables
+summary(used_car$Price)
+summary(used_car$Year)
+summary(used_car$Mileage)
+```
+
+According to the results, the data set contains a significant number of outliers, indicating that there are several used cars with prices significantly higher than the rest of the cars in the sample. The boxplot range also indicates that the data distribution is skewed to the right, indicating that there are more cars with lower prices than with higher prices. So we will analyze more about this in explonatory data analysis to make more informed decision
+
+
+# Data Sampling
+
+A random sample of 3% of the observations from the data has been picked and stored as a current data labelled **used_car_reduced** using R's sample() function. The goal is to reduce the dataset for exploratory data analysis (EDA) while retaining the general structure and characteristics of the original dataset. When handling large sets of data, this is most often performed in order to render the data more manageable and reduce computational complexity.
+
+```{r}
+#Counting the number of observations and storing them in n_rows
+n_rows <- nrow(used_car)
+
+#Sampling formula
+used_car_idx <- sample(n_rows, n_rows*0.03)
+
+#Take 3% of the entire data set at random and save the results to the variable used_car_reduced.
+used_car_reduced <- used_car[used_car_idx,]
+
+#Keeping the output
+write.csv(used_car_reduced, "used_car_reduced.csv")
+```
+

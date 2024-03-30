@@ -1,0 +1,261 @@
+---
+title: "Regression Tree ML"
+author: "Fredrick George Mbuya(2056118)"
+date: "2023-03-24"
+output: html_document
+---
+
+#Libraries used 
+```{r}
+library(ggplot2)
+library(lattice)
+library(caret)
+library(rpart.plot)
+library(mlbench)
+```
+
+#Loading the data
+```{r}
+# Read the 'used_car_new.csv' file into a data frame called 'tree_data' and set strings as factors
+tree_data <- read.csv("used_car_new.csv", stringsAsFactors = TRUE)
+
+# Remove the first column of the 'tree_data' data frame (it is an unnecessary column)
+tree_data <- tree_data[,-1]
+
+```
+
+
+# Model training and evaluation
+```{r}
+# Set the random seed for reproducibility
+set.seed(1994)
+
+# Determine the number of rows in the 'tree_data' data frame
+n_rows <- nrow(tree_data)
+
+# Create a random sample of indices for splitting the data into training and testing sets (70% for training)
+idx <- sample(n_rows, n_rows*0.7)
+
+# Create the training and testing data sets using the sampled indices
+trainData <- tree_data[idx,]
+testData <- tree_data[-idx,]
+
+# Define the formula for the decision tree model using the relevant features
+tree_formula <- Price~Year + Mileage + NewCity + NewState + NewMake + NewModel
+
+# Set up cross-validation parameters for the model (1000 iterations)
+parameters_cv <- trainControl(method = 'CV', number = 1000, savePredictions = "final")
+
+# Train the decision tree model using cross-validation
+tree_model_CV <- train(tree_formula, data = trainData, method='rpart', trControl=parameters_cv, preProcess=c("scale", "center"))
+
+# Set up bootstrapping parameters for the model (1000 iterations)
+parameters_boot <- trainControl(method = 'boot', number = 1000, savePredictions = "final")
+
+# Train the decision tree model using bootstrapping
+tree_model_boot <- train(tree_formula, data = trainData, method='rpart', trControl=parameters_boot, preProcess=c("scale", "center"))
+
+# Display the cross-validation and bootstrapped models
+tree_model_CV
+tree_model_boot
+
+# Make predictions using the cross-validation and bootstrapped models
+predictions_CV <- predict(tree_model_CV, testData[,-1], type = 'raw')
+predictions_boot <- predict(tree_model_boot, testData[,-1], type = 'raw')
+
+# Calculate the price range of the test data
+price_range <- diff(range(testData$Price))
+price_range
+
+# Calculate evaluation metrics for the cross-validation model
+rmse_cv <- RMSE(predictions_CV, testData$Price)
+mse_cv <- RMSE(predictions_CV, testData$Price)^2
+mae_cv <- MAE(predictions_CV, testData$Price)
+r2_cv <- R2(predictions_CV, testData$Price)
+
+# Calculate evaluation metrics for the bootstrapped model
+rmse_boot <- RMSE(predictions_boot, testData$Price)
+mse_boot <- RMSE(predictions_boot, testData$Price)^2
+mae_boot <- MAE(predictions_boot, testData$Price)
+r2_boot <- R2(predictions_boot, testData$Price)
+
+# Print evaluation metrics for both models
+cat("RMSE:", rmse_cv, "\n")
+cat("MSE:", mse_cv, "\n")
+cat("MAE:", mae_cv, "\n")
+cat("R-squared:", r2_cv, "\n")
+
+cat("RMSE:", rmse_boot, "\n")
+cat("MSE:", mse_boot, "\n")
+cat("MAE:", mae_boot, "\n")
+cat("R-squared:", r2_boot, "\n")
+
+# Plot the decision trees for the cross-validation and bootstrapped models
+rpart.plot(tree_model_CV$finalModel, main="Regression tree-CV")
+rpart.plot(tree_model_boot$finalModel, main="Regression tree-boot")
+
+# Display variable importance for both models
+varImp(tree_model_CV)
+varImp(tree_model_boot)
+
+```
+
+# Dropping City and State
+```{r}
+# Set the random seed for reproducibility
+set.seed(1994)
+
+# Remove the NewCity and NewState columns from the 'tree_data' data frame
+tree_data <- tree_data[,-c(4,5)]
+
+
+# Determine the number of rows in the 'tree_data' data frame
+n_rows <- nrow(tree_data)
+
+# Create a random sample of indices for splitting the data into training and testing sets (70% for training)
+idx <- sample(n_rows, n_rows*0.7)
+
+# Create the training and testing data sets using the sampled indices
+trainData <- tree_data[idx,]
+testData <- tree_data[-idx,]
+
+# Define the formula for the decision tree model using the relevant features
+tree_formula <- Price~Year + Mileage + NewMake + NewModel
+
+# Set up cross-validation parameters for the model (1000 iterations)
+parameters_cv <- trainControl(method = 'CV', number = 1000, savePredictions = "final")
+# Train the decision tree model using cross-validation
+tree_model_CV <- train(tree_formula, data = trainData, method='rpart', trControl=parameters_cv, preProcess=c("scale", "center"))
+
+# Set up bootstrapping parameters for the model (1000 iterations)
+parameters_boot <- trainControl(method = 'boot', number = 1000, savePredictions = "final")
+# Train the decision tree model using bootstrapping
+tree_model_boot <- train(tree_formula, data = trainData, method='rpart', trControl=parameters_boot, preProcess=c("scale", "center"))
+
+# Display the cross-validation and bootstrapped models
+tree_model_CV
+tree_model_boot
+
+# Make predictions using the cross-validation and bootstrapped models
+predictions_CV <- predict(tree_model_CV, testData[,-1], type = 'raw')
+predictions_boot <- predict(tree_model_boot, testData[,-1], type = 'raw')
+
+# Calculate the price range of the test data
+price_range <- diff(range(testData$Price))
+price_range
+
+# Calculate evaluation metrics for the cross-validation model
+rmse_cv <- RMSE(predictions_CV, testData$Price)
+mse_cv <- RMSE(predictions_CV, testData$Price)^2
+mae_cv <- MAE(predictions_CV, testData$Price)
+r2_cv <- R2(predictions_CV, testData$Price)
+
+# Calculate evaluation metrics for the bootstrapped model
+rmse_boot <- RMSE(predictions_boot, testData$Price)
+mse_boot <- RMSE(predictions_boot, testData$Price)^2
+mae_boot <- MAE(predictions_boot, testData$Price)
+r2_boot <- R2(predictions_boot, testData$Price)
+
+# Print evaluation metrics for both models
+cat("RMSE:", rmse_cv, "\n")
+cat("MSE:", mse_cv, "\n")
+cat("MAE:", mae_cv, "\n")
+cat("R-squared:", r2_cv, "\n")
+
+cat("RMSE:", rmse_boot, "\n")
+cat("MSE:", mse_boot, "\n")
+cat("MAE:", mae_boot, "\n")
+cat("R-squared:", r2_boot, "\n")
+
+# Plot the decision trees for the cross-validation and bootstrapped models
+rpart.plot(tree_model_CV$finalModel, main="Regression tree-CV(NoCity&State)")
+rpart.plot(tree_model_boot$finalModel, main="Regression tree-boot((NoCity&State))")
+
+# Display variable importance for both models
+varImp(tree_model_CV)
+varImp(tree_model_boot)
+
+```
+
+# Dropping Model
+
+```{r}
+# Set the random seed for reproducibility
+set.seed(1994)
+
+# Remove the NewModal column from the 'tree_data' data frame
+tree_data <- tree_data[,-5]
+
+
+# Determine the number of rows in the 'tree_data' data frame
+n_rows <- nrow(tree_data)
+
+# Create a random sample of indices for splitting the data into training and testing sets (70% for training)
+idx <- sample(n_rows, n_rows*0.7)
+
+# Create the training and testing data sets using the sampled indices
+trainData <- tree_data[idx,]
+testData <- tree_data[-idx,]
+
+# Define the formula for the decision tree model using the relevant features
+tree_formula <- Price~Year + Mileage + NewMake
+
+# Set up cross-validation parameters for the model (1000 iterations)
+parameters_cv <- trainControl(method = 'CV', number = 1000, savePredictions = "final")
+# Train the decision tree model using cross-validation
+tree_model_CV <- train(tree_formula, data = trainData, method='rpart', trControl=parameters_cv, preProcess=c("scale", "center"))
+
+# Set up bootstrapping parameters for the model (1000 iterations)
+parameters_boot <- trainControl(method = 'boot', number = 1000, savePredictions = "final")
+# Train the decision tree model using bootstrapping
+tree_model_boot <- train(tree_formula, data = trainData, method='rpart', trControl=parameters_boot, preProcess=c("scale", "center"))
+
+# Display the cross-validation and bootstrapped models
+tree_model_CV
+tree_model_boot
+
+# Make predictions using the cross-validation and bootstrapped models
+predictions_CV <- predict(tree_model_CV, testData[,-1], type = 'raw')
+predictions_boot <- predict(tree_model_boot, testData[,-1], type = 'raw')
+
+# Calculate the price range of the test data
+price_range <- diff(range(testData$Price))
+price_range
+
+# Calculate evaluation metrics for the cross-validation model
+rmse_cv <- RMSE(predictions_CV, testData$Price)
+mse_cv <- RMSE(predictions_CV, testData$Price)^2
+mae_cv <- MAE(predictions_CV, testData$Price)
+r2_cv <- R2(predictions_CV, testData$Price)
+
+# Calculate evaluation metrics for the bootstrapped model
+rmse_boot <- RMSE(predictions_boot, testData$Price)
+mse_boot <- RMSE(predictions_boot, testData$Price)^2
+mae_boot <- MAE(predictions_boot, testData$Price)
+r2_boot <- R2(predictions_boot, testData$Price)
+
+# Print evaluation metrics for both models
+cat("RMSE:", rmse_cv, "\n")
+cat("MSE:", mse_cv, "\n")
+cat("MAE:", mae_cv, "\n")
+cat("R-squared:", r2_cv, "\n")
+
+cat("RMSE:", rmse_boot, "\n")
+cat("MSE:", mse_boot, "\n")
+cat("MAE:", mae_boot, "\n")
+cat("R-squared:", r2_boot, "\n")
+
+# Plot the decision trees for the cross-validation and bootstrapped models
+rpart.plot(tree_model_CV$finalModel, main="Regression tree-CV")
+rpart.plot(tree_model_boot$finalModel, main="Regression tree-boot")
+
+# Display variable importance for both models
+varImp(tree_model_CV)
+varImp(tree_model_boot)
+```
+
+General;  
+  .Based on the evaluation metrics obtained, it appears that regression tree model may not be performing well in predicting the Price of used car in this data set 
+
+
+

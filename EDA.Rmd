@@ -1,0 +1,583 @@
+---
+title: "Exploratory data analysis"
+author: "Fredrick george Mbuya"
+date: "2023-03-11"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+# Libraries used
+```{r}
+library(ggplot2)
+library(modeest)
+library(moments)
+library(dplyr)
+library(AICcmodavg)
+library(clustMixType)
+library(cluster)
+library(ggplot2)
+library(gridExtra)
+```
+
+# Loading data into R
+```{r}
+used_car_reduced <-read.csv("used_car_reduced.csv", stringsAsFactors = T)
+
+#Removing Columns One(Auto Generated Id) and Seven(Vin)
+  #Vin as a unique identifier, we do not work with it in the next steps
+used_car_reduced <- used_car_reduced[,-c(1,7)]
+```
+
+
+# Summary Statistics
+```{r}
+summary(used_car_reduced)
+
+# Using the modeest library we can find mode using mfv function
+yearMode <- mfv(used_car_reduced$Year)
+priceMode <- mfv(used_car_reduced$Price)
+milgMode <- mfv(used_car_reduced$Mileage)
+
+# Printing out mode values
+cat("Mode:\n", "Year: ", yearMode, "\nPrice: ", priceMode, "\nMileage: ", milgMode)
+```
+
+Based on the results:  
+  .The minimum price for a used car in the dataset is 1500, the median price is 18499, and the mean price is 21391. The 1st and 3rd quartiles are 12999 and 26995, respectively, which means that 25% of the cars have prices below 12999, and 75% have prices below 26995. The maximum price in the dataset is 379900.  
+  
+  .Furthermore, the median price is less than the mean price, indicating that there are a few extremely expensive used cars and that the price distribution is skewed to the right.  
+
+  .The summary statistics for the make and model variables indicate that the dataset contains information on a variety of different car manufacturer and models. The most common manufacturer in the dataset is Ford, with 3,305 cars, and the most common model is the Silverado, with 738 cars.  
+  
+  .It's been seen that most of the cars in the dataset were bought in 2014, that the most common selling price is $14,995, and that the most common mileage is 10 Kms.  
+  
+  .The year and mileage variables indicate that the dataset contains information on used cars purchased between 1997 and 2018 and between 5 and 2,457,832 kilometres travelled.  
+  
+  .The median year is 2014, which is also the most common year. The median mileage is 40,111 km, while the most common mileage is 10 km.The most common price is $14,995
+  
+  .Texas, California, and Florida have the most used cars for sale of any state, with the most in Houston, San Antonio, and Louisville. 
+
+# Confirming the structure
+```{r}
+str(used_car_reduced)
+```
+  
+  .Based on the findings, it is confirmed that the data set contains 25562 observations (rows) and 7 variables, with the variables "Price," "Year," and "Mileage" being integers and the variables "City," "State," "Make," and "Model" being factors with various levels. 
+
+# Exploaring numerical variables
+
+## Statistical dispersion
+
+```{r}
+# Here we can see what the standard deviation of the numerical data are
+priceSD <- sd(used_car_reduced$Price)
+milgSD <- sd(used_car_reduced$Mileage)
+
+# Here we are find the variance of our numerical data using the var() method
+priceVar <- var(used_car_reduced$Price)
+milgVar <- var(used_car_reduced$Mileage)
+
+# Here we are find the IQR of our numerical data using the IQR() method
+priceIQR <- IQR(used_car_reduced$Price)
+milgIQR <- IQR(used_car_reduced$Mileage)
+
+# Here we are find the Median Absolute Deviance (MAD) of our numerical data using mad()
+priceMad <- mad(used_car_reduced$Price)
+milgMad <- mad(used_car_reduced$Mileage)
+
+# Printing out all of our statistical dispersion variables
+cat("standard deviation:\n", "price = ", priceSD, "\n mileage = ", milgSD,
+    "\n\n--------------------------------------------------------------------\n",
+    "\nVariance:\n", "price = ", priceVar, "\n mileage = ", milgVar,
+    "\n\n--------------------------------------------------------------------\n",
+    "\nInter-Quartile Range:\n", "price = ", priceIQR, "\n mileage = ", milgIQR,
+    "\n\n--------------------------------------------------------------------\n",
+    "\nMedian Absolute Deviance:\n", "price = ", priceMad, "\n mileage = ", milgMad)
+
+```
+
+Based on the results:  
+  .With an average deviations of $13,585.24 and 40,768.49 km for price and mileage, respectively, the standard deviation shows that there is a lot of variation in the data.  
+  
+  .The Interquartile Range (IQR) shows how far apart the middle 50% of the data points are. The IQR values show that the range for the middle 50% of car prices is $13,706.75, and the range for the middle 50% of mileages is 48,683 km.
+
+  .The Median Absolute Deviance (MAD) is a robust measure of dispersion, and it reveals that the typical deviations from the median price and mileage are $9,488.64 and 30,802.5 km, respectively.
+
+## Distribution shape 
+
+```{r}
+#calculate skewness
+priceSkew <- skewness(used_car_reduced$Price)
+milgSkew <- skewness(used_car_reduced$Mileage)
+
+#calculate kurtosis
+priceKur <- kurtosis(used_car_reduced$Price)
+milgKur <- kurtosis(used_car_reduced$Mileage)
+
+# Printing out Skewness and Kurtosis
+cat("skewness:\n", "price = ", priceSkew, "\n mileage = ", milgSkew,
+    "\n\n--------------------------------------------------------------------\n",
+    "\nKurtosis:\n", "price = ", priceKur, "\n mileage = ", milgKur)
+```
+
+  .The skewness and kurtosis values show that both the price and mileage distributions in the dataset are right-skewed, with a higher concentration of lower values, and have heavier tails than a normal distribution. The skewness and kurtosis of the price distribution are more noticeable than those of the mileage distribution. This observation aligns with what can be seen from the summary statistics.
+
+## QQ plots; confirming distribution shape
+
+```{r}
+# Price
+qplot(sample = Price, data = used_car_reduced) +
+  ggtitle("Price Distribution") +
+  scale_y_continuous(labels = scales::label_number_si())
+
+# Mileage
+qplot(sample = Mileage, data = used_car_reduced) +
+  ggtitle("Mileage Distribution") +
+  scale_y_continuous(labels = scales::label_number_si())
+```
+
+  .The Q-Q plot analysis agrees with the earlier observation that neither Price nor Mileage data follows a normal distribution because the lines are not straight. This could mean that common summary statistics like the mean and standard deviation might not give a full or accurate picture of the data. Instead, median or interquartile range might be a better choice.
+
+## Histogram
+
+```{r}
+#Histogram of Used Car Prices
+ggplot(used_car_reduced, aes(x=Price)) + 
+  geom_histogram( bins = 20, fill="#69b3a2", alpha=0.9) +
+  xlim(1500,379900)+
+  labs(x = "Price", y = "Frequency",
+       title = "Histogram of Used Car Prices")
+```
+
+  .The histogram's right-skewed distribution confirms the conclusion drawn from summary statistics that most prices fall in the lower range and a few prices are extremely high. The right side of the distribution has a lengthy tail, suggesting the existence of outliers.
+ 
+```{r}
+#Histogram of Used Car Year
+png(filename = "Histogram_Year.png")
+ggplot(used_car_reduced, aes(x=Year)) + 
+  geom_histogram(bins = 20, fill="#69b3a2", alpha=0.9) +
+  labs(x = "Year", y = "Frequency", 
+       title = "Histogram of Used Car Year")
+```
+
+  .We can see that the majority of the used cars in the dataset were manufactured between 2010 and 2018, with a peak around the year 2015.
+  .There are relatively fewer cars from the earlier years, i.e., before 2005. This suggests that the dataset is skewed towards more recent models.Left skewed distribution
+  
+```{r}
+#Histogram of Used Car Mileage
+ggplot(used_car_reduced, aes(x=Mileage)) + 
+  geom_histogram(bins = 20, fill="#69b3a2", alpha=0.9) +
+  labs(x = "Mileage", y = "Frequency", 
+       title = "Histogram of Used Car Mileage")
+```
+
+
+  .The histogram appears to be right-skewed, indicating that the majority of used cars have lower mileage (below 100,000Kms).
+
+## Correlation analysis
+
+### Using cor()
+```{r}
+#Round it to two decimal places
+round(cor(used_car_reduced[1:3]),2)
+```
+
+From correlation matrix, we can see that:
+  .Price is positively correlated with Year (0.41), which indicates that as the year of the car increases, its price tends to increase as well (although the correlation is not very strong).
+  .Price is negatively correlated with Mileage (-0.41), which indicates that as the mileage of the car increases, its price tends to decrease (again, the correlation is not very strong).
+  .Year and Mileage are strongly negatively correlated (-0.73), which indicates that as the year of the car increases, its mileage tends to decrease.
+
+### Using Scatterplots
+
+#### Price against Year.
+
+```{r}
+ggplot(used_car_reduced, aes(x=Year, y=Price)) + 
+  geom_point() +
+  geom_smooth() +
+  labs(x = "Year", y = "Price", 
+       title = "Scatterplot of Price against Year")
+```
+
+The scatter plot of Price against Year;
+  .The line of best fit (the smooth line) shows a general upward trend, indicating that newer cars tend to have higher prices than older cars.
+  .However, there is still a lot of variability in the data and some older cars still have high prices, as shown by the dots above the line. 
+  .The plot supports the findings from the correlation matrix that there is a positive correlation between year and price, even though the relationship may not be exactly linear
+  
+#### Price against mileage.
+
+```{r}
+ggplot(used_car_reduced, aes(x=Mileage, y=Price)) + 
+  geom_point() +
+  geom_smooth() +
+  labs(x = "Mileage", y = "Price", 
+       title = "Scatterplot of Price against Mileage")
+```
+
+The scatter plot of Price against mileage;
+  .Confirming a negative relationship between price and mileage, meaning that as mileage increases, the price of the car tends to decrease.
+  .Also shows a curved relationship, indicating that the decrease in price is not linear, but rather the greatest reduction in price occurs for cars with high mileage.
+  .However, there is a lot of variability in the data, as indicated by the spread of the points around the curve.
+
+*Overall.*  
+  .Exploratory data analysis for numerical variables, specifically from correlation matrix and scatter plots suggest that the price of a used car is influenced by both its age and mileage, with newer cars and those with lower mileage tending to command higher prices.
+
+# Exploring categorical variables
+
+## Cities with the Highest/Lowest Number of Used Cars for Sale in the United States
+
+```{r}
+# Use group_by and summarize to count the number of occurrences for each city
+city_counts <- used_car_reduced %>% group_by(City) %>% summarize(count = n())
+
+# Sort the cities by count in descending order
+arranged_cities <- city_counts %>% arrange(desc(count))
+
+# Print the top 50 cities
+print(arranged_cities%>%top_n(10))
+
+#Print Least 10 cities
+print(arranged_cities%>%top_n(-10))
+```
+
+  .The dataset contains used car listings from a wide range of cities across the US.
+  .80% of cities were found to have less than 15 the number of used cars for sale in the United States.  
+  .Some cities, such as Houston and San Antonio, appeared to have a significant number of listings, whereas Adel, Aiken, and others appeared to have only one listing.
+
+## State
+
+```{r}
+sort(table(used_car_reduced$State))
+```
+
+From the output,  
+  .The state with the least number of used cars for sale is Washington, DC, followed by Wyoming and Vermont.    
+  .On the other hand, Texas has the highest number of used cars for sale, followed by California and Florida.
+  
+## Manufacturer (Make)
+
+```{r}
+sort(table(used_car_reduced$Make))
+```
+
+From the output,  
+  .The most common manufacturer of cars in the dataset are Ford, Chevrolet, Toyota, Nissan, and Honda.  
+  .The least common manufacturer include Isuzu, McLaren, Plymouth, Rolls-Royce, Lotus, and Lamborghini.
+
+## Model
+
+```{r}
+# Use group_by and summarize to count the number of occurrences for each model
+model_counts <- used_car_reduced %>% group_by(Model) %>% summarize(count = n())
+
+# Sort the models by count in descending order
+arranged_models <- model_counts %>% arrange(desc(count))
+
+# Print the top 10 models
+print(arranged_models%>%top_n(10))
+
+#Print Least 10 models
+print(arranged_models%>%top_n(-10))
+```
+
+From the output,  
+  .The most frequent car model in the dataset is the Silverado, followed by the Grand, and the Accord.  
+  .The least frequent car models are those that appear only once in the dataset, such as the 124, 2002dr, and 200 convertible.
+  .77% of car models appeared less than 15 times on the list
+
+## Graphical representations of categorical variables
+Due to the large number of categories in our categorical variables (the minimum is 51), it is difficult to draw a bar graph for them; the bar graph becomes cluttered and difficult to read. We use a variety of strategies to make the bar graph easier to understand, such as a bar graph with the top 20 categories and a bar graph with the bottom 20 categories, both sorted by frequency count.
+
+### For City
+
+```{r}
+#plot of all cities
+city_table <- table(used_car_reduced$City)
+barplot(city_table)
+
+# Print the top 10 cities
+top_cities <- arranged_cities%>%top_n(10)
+
+#Plot the top 10 cities
+ggplot(top_cities, aes(x=City, y= count)) + geom_bar(stat = "identity") + ggtitle("Top 10 City")
+
+#Print Least 10 cities
+least_cities <- slice_tail(arranged_cities, n=10)
+
+#Plot the least 10 cities
+ggplot(least_cities, aes(x=City, y= count)) + geom_bar(stat = "identity") + ggtitle("Bottom 10 Cities")
+```
+
+*plot of all cities*
+  .The frequency of each city in the US is displayed in a bar graph. However, the graph was challenging to interpret because the variable contained so many categories.
+
+*Plot the top 10 cities* 
+  .We can see that the city with the highest frequency is Houston, followed by San Antonio, and Louisville. The frequency of the top 10 cities ranges from around 100 to 450.
+
+*Plot the least 10 cities*
+  .We can see that Wheaton, Winnemucca, Winterville,and the other cities have a frequency of 1
+
+### For State
+
+```{r}
+#Making a State table
+state_table <-table(used_car_reduced$State)
+
+#ploting bar graph with all States
+barplot(state_table)
+
+#Sorting states 
+sorted_states <- names(sort(state_table, decreasing = TRUE))
+
+#Top 20 States
+barplot(state_table[sorted_states[1:20]], las = 2, col = "skyblue", main = "Top 20 States", ylab = "Frequency")
+
+#Bottom 20 States
+barplot(state_table[rev(sorted_states)[1:20]], las = 2, col = "skyblue", 
+        main = "Bottom 20 States", ylab = "Frequency")
+```
+
+  .The graphs supports the findings from the table analysis that the three states with the greatest number of used cars for sale are Texas, California, and Florida, while Washington, DC has the fewest.
+
+### For Manufacturers(Make)
+
+```{r}
+#Making a manufacturers table
+make_table <-table(used_car_reduced$Make)
+
+#ploting bar graph with all manufacturers.
+barplot(make_table)
+
+
+#Sorting manufacturers 
+sorted_makes <- names(sort(make_table, decreasing = TRUE))
+
+#Top 20 Car Manufacturers
+barplot(make_table[sorted_makes[1:20]], las = 2, col = "skyblue", main = "Top 20 Car Manufacturers", ylab = "Frequency")
+
+
+#Bottom 20 Car Manufacturers
+barplot(make_table[rev(sorted_makes)[1:20]], las = 2, col = "skyblue", 
+        main = "Bottom 20 Car Manufacturers", ylab = "Frequency")
+```
+
+*ploting bar graph with all manufacturers.*
+  .The frequency of each used car manufacturer in the US is displayed in a bar graph. However, the graph was challenging to interpret because the variable contained so many categories.  
+
+*Top 20 Car Manufacturers*  
+  .In a bar graph that only shows the top 20 manufacturers, Ford is the most prevalent, followed by Chevrolet and Toyota, with frequency ranging from about 350 to above 3000. This also supports what the table analysis revealed.  
+  
+*Bottom 20 Car Manufacturers*
+  .In a bar graph that only shows the bottom 20 manufacturers, Isuzu, McLaren, Plymouth, Rolls-Royce, Lotus, and Lamborghini are the least common.
+
+### For Model
+
+```{r}
+#plot of all models
+model_table <- table(used_car_reduced$Model)
+barplot(model_table)
+
+# Print the top 10 models
+top_models <- arranged_models%>%top_n(10)
+
+#Plot the top 10 models
+ggplot(top_models, aes(x=Model, y= count)) + geom_bar(stat = "identity") + ggtitle("Top 10 Used Car Models")
+
+#Print Least 10 models
+least_models <- slice_tail(arranged_models, n=10)
+
+#Plot the least 10 models
+ggplot(least_models, aes(x=Model, y= count)) + geom_bar(stat = "identity") + ggtitle("Bottom 10 Used Car Models")
+```
+
+*plot of all models*
+  .Each used car model's frequency in the US is depicted in a bar graph. However, as is typical, the graph became ambiguous due to the large number of categories contained inside the variable.  
+
+*Plot the top 10 models*  
+  In a bar graph of the top 10 models with frequency ranging from about 200 to over 700, Silverado is the most prevalent car, followed by Grand and Accord.
+
+*Plot the least 10 models* 
+  While in the graph of least models all appeared only once.
+
+
+## Relationships between target variable(Price) and categorical variables
+
+### Using boxplot
+
+```{r}
+#Price and City
+ggplot(used_car_reduced, aes(x=City, y=Price)) + geom_boxplot() + ggtitle("Boxplot Price_City")
+
+#Price and State
+ggplot(used_car_reduced, aes(x=State, y=Price)) + geom_boxplot() + ggtitle("Boxplot Price_State")
+
+
+#Price and Manufacturers
+ggplot(used_car_reduced, aes(x=Make, y=Price)) + geom_boxplot() + ggtitle("Boxplot Price_Make")
+
+#Price and Models
+ggplot(used_car_reduced, aes(x=Model, y=Price)) + geom_boxplot() + ggtitle("Boxplot Price_Model")
+```
+
+From the graphs;  
+  .Some manufacturers, like Rolls-Royce and Ferrari, have median prices that are well above \$200,000. Most, though, have median prices that are below \$50,000. Also, some manufacturers, like Lamborghini, have a wider range of prices than others, while most have similar price ranges.
+  .All states have median prices below \$50,000, and the price range is almost the same in all of them.
+  .Also, the appearance of outliers, which show that some cars have extremely high prices.
+
+### Using Analysis of varianc(Anova) test
+
+```{r}
+# Fit a four-way ANOVA model to the used_car_reduced dataset
+four.way <- aov(Price ~ City + State + Make + Model, data = used_car_reduced)
+# Summarize the model results
+summary(four.way)
+
+# Fit a three-way ANOVA model to the used_car_reduced dataset with City as a main effect
+three.wayCity <- aov(Price ~ City + Make + Model, data = used_car_reduced)
+# Summarize the model results
+summary(three.wayCity)
+
+# Fit a three-way ANOVA model to the used_car_reduced dataset with State as a main effect
+three.wayState <- aov(Price ~ State + Make + Model, data = used_car_reduced)
+# Summarize the model results
+summary(three.wayState)
+
+# Combine the models into a list
+model.set <- list(four.way, three.wayCity, three.wayState)
+# Assign names to the models in the list
+model.names <- c("four.way", "three.wayCity", "three.wayState")
+
+# Generate an AIC table comparing the models in the model.set list
+aictab(model.set, modnames = model.names)
+```
+
+In this output,  
+  .all four categorical predictor variables (City, State, Make, and Model) have significant effects on the Price of used cars, as indicated by their very small p-values (all <2e-16). 
+  .the Make variable has the strongest effect on Price, as it has the highest F-value and the largest Sum Sq and Mean Sq. This suggests that the make of the car is an important predictor of price in this dataset.  
+  .The State and City variables have the least influence on Price because they have the lowest F-value and Sum Sq. This suggests that, when compared to other categorical variables, the State and City of the car may not be an important predictor of price in this dataset.  
+  .Based on the AICc model selection process, The model without City 'three.wayState' is the best fit among the models tested, and it is much better supported by the data than the other models because it has the lowest AICc value (526916.5)
+
+*Overall Comment*  
+  .Because City and State both represent the location of the car's sale, we considered dropping one of them for redundant reasons. However, after running an ANOVA test, we discovered that the location of the car's sale was not a significant predictor of price in this dataset. So we keep both, and during the Machine learning prediction phase, we will use various 'Variable importance measures' to see whether the State and/or City variable is important in predicting the used car price. This will aid in making more accurate decisions.
+
+
+# Clustering Analysis Using K-prototype
+
+```{r}
+#Categorical Variables
+cat_vars <- c("City", "State", "Make", "Model")
+
+#Numerical variables
+num_vars <- c("Price", "Year", "Mileage")
+
+
+#Identifying number of clusters k=3
+k <-4
+
+#Building Clustering algorithm
+kp <- kproto(used_car_reduced,k, cat.vars=cat_vars, num.vars=num_vars, lambda = 1)
+                     
+#plot the clusters in whole dataset
+clusplot(used_car_reduced, kp$cluster, color = TRUE,shade = TRUE, labels = 2, lines = 0)
+
+#plot of clusters per every variables
+plot(kp)
+
+#Clustering Evaluations using silhouette score
+sil <-silhouette(kp$cluster, dist(kp$dists))
+summary(sil)
+
+#plot of silhouette results
+plot(sil)
+```
+  
+  . Cluster 1 has the highest average silhouette width (0.5807), followed by Cluster 3 (0.5474) and Cluster 2 (0.4671). Cluster 4 has a negative average silhouette width (-0.1450), which suggests that the observations in this cluster are not well-separated from other clusters and may not belong in this cluster. 
+  
+  .The minimum silhouette width is -0.6068, indicating that some observations are poorly assigned to their clusters. The median silhouette width is 0.5910, which suggests that most observations have a good fit within their assigned clusters. The maximum silhouette width is 0.7427, indicating that some observations are very well separated from other clusters. The mean silhouette width is 0.4827, which is a measure of the overall quality of the clustering, with higher values indicating better separation between clusters.
+
+
+# Interpreting Outliers
+Concerning outliers,this Exploratory data analysis shows that the presence of outliers is due to the large dispersion in data. Therefore, we cannot consider this data to be incorrect.
+
+# Data transformation
+Following Exploratory data analysis, we found that the majority of our categorical variables have a large number of levels, with the lowest having 51. Other levels have a very high frequency, whereas others have a very low frequency. So we chose to group the levels based on their frequency count for a variety of reasons, including the ability to manage the imbalance data, making it more manageable for machine learning algorithms and leading to improved model performance.
+
+```{r}
+# Use group_by and summarize to count the number of occurrences for each Model
+model_counts <- used_car_reduced %>% group_by(Model) %>% summarize(count = n())
+
+# Sort the Model by count in descending order
+arranged_model <- model_counts %>% arrange(desc(count))
+
+# Categorizes the Model based on count into four levels: MOIsolated, MOLimited, MOModerate, and MOPlentiful.
+arranged_model$NewModel = with(arranged_model,ifelse(count<25, "MOIsolated", 
+                  ifelse(count<50, "MOLimited",
+                  ifelse(count<=100, "MOModerate", "MOPlentiful"))))
+
+
+# Use group_by and summarize to count the number of occurrences for each Make
+make_counts <- used_car_reduced %>% group_by(Make) %>% summarize(count = n())
+
+# Sort the Make by count in descending order
+arranged_make <- make_counts %>% arrange(desc(count))
+
+# Categorizes the Make based on count into four levels: MAIsolated, MALimited, MAModerate, and MAPlentiful.
+arranged_make$NewMake = with(arranged_make,ifelse(count<25, "MAIsolated", 
+                  ifelse(count<50, "MALimited",
+                  ifelse(count<=100, "MAModerate", "MAPlentiful"))))
+
+
+# Use group_by and summarize to count the number of occurrences for each State
+state_counts <- used_car_reduced %>% group_by(State) %>% summarize(count = n())
+
+# Sort the State by count in descending order
+arranged_state <- state_counts %>% arrange(desc(count))
+
+# Categorizes the State based on count into four levels: SIsolated, SLimited, SModerate, and SPlentiful.
+arranged_state$NewState = with(arranged_state,ifelse(count<25, "SIsolated", 
+                  ifelse(count<50, "SLimited",
+                  ifelse(count<=100, "SModerate", "SPlentiful"))))
+
+#Use group_by and summarize to count the number of occurrences for each Price
+city_counts <- used_car_reduced %>% group_by(City) %>% summarize(count = n())
+
+# Sort the City by count in descending order
+arranged_cities <- city_counts %>% arrange(desc(count))
+
+# Categorizes the City based on count into four levels: CIsolated, CLimited, CModerate, and CPlentiful.
+arranged_cities$NewCity = with(arranged_cities,ifelse(count<25, "CIsolated", 
+                  ifelse(count<50, "CLimited",
+                  ifelse(count<=100, "CModerate", "CPlentiful"))))
+
+
+
+#join the 'used_car_reduced' data frame with 'arranged_cities' using 'City' as the common column
+used_car_new <- left_join(used_car_reduced, arranged_cities, by="City")
+
+# Then, join the resulting data frame with 'arranged_state' using 'State' as the common column
+used_car_new <- left_join(used_car_new, arranged_state, by="State")
+
+# Next, join the resulting data frame with 'arranged_make' using 'Make' as the common column
+used_car_new <- left_join(used_car_new, arranged_make, by="Make")
+
+# Finally, join the resulting data frame with 'arranged_model' using 'Model' as the common column
+used_car_new <- left_join(used_car_new, arranged_model, by="Model")
+
+# Remove unnecessary variables from 'used_car_new' data frame
+  # Identify the position of variables to be removed using which() and %in% functions
+used_car_new <- used_car_new[, -which(names(used_car_new) %in% c("City","State","Make","Model","count.x","count.y","count.x.x","count.y.y"))]
+
+# Converts categorical variables in 'used_car_new' data frame to factors.
+used_car_new$NewCity <- as.factor(used_car_new$NewCity)
+used_car_new$NewState <-as.factor(used_car_new$NewState)
+used_car_new$NewMake <- as.factor(used_car_new$NewMake)
+used_car_new$NewModel <- as.factor(used_car_new$NewModel)
+
+# Exports 'used_car_new' data frame to a CSV file.
+write.csv(used_car_new, "used_car_new.csv")
+```
+
+
